@@ -44,32 +44,6 @@ DWOSM
 - numba (for JIT compilation)
 - oil_library (NOAA ADIOS database)
 
-## Quick Start
-
-```python
-from DWOSM import DWOSM_API
-
-# Initialize model
-model = DWOSM_API.DWOSM(
-    near_data='ctd_profile.csv',
-    current_data='ocean_current.nc', 
-    wind_data='wind_data.nc',
-    shore_data='shoreline.bna'
-)
-
-# Configure release
-model.set_release(
-    location=[28.738, -88.366, 1500],  # lat, lon, depth
-    diameter=0.45,
-    oil_type='AD01554',  # NOAA ADIOS ID
-    flow_rate=60000,     # bbl/day
-    gor=1600            # ft³/bbl
-)
-
-# Run simulation
-model.simulate(duration_hours=72)
-```
-
 ## Project Structure
 
 ```
