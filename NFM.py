@@ -135,11 +135,6 @@ class Blowout(object):
                                        self.d0, self.substance, self.gor,
                                        self.num_oil_elements, self.num_gas_elements, self.SSDI)
         self.d_gas, self.vf_gas, d50_gas, self.d_liq, self.vf_liq, d50_liq = self.breakup_model.simulate()
-        # print(self.d_gas)
-        # self.breakup_model.plot(unit=1)
-        plot_oil_gas_DSD(self.profile, self.oil, self.mass_flux, self.z0,
-                         self.d0, self.substance, self.gor,
-                         self.num_oil_elements, self.num_gas_elements)
 
         # Create the `plume_model` particle list
         self.disp_phases = []
@@ -225,87 +220,3 @@ def assemble_particles(m_tot, d, vf, profile, oil, yk, x0, y0, z0, Tj, lambda_1)
 
     # Return the list of particles
     return disp_phases
-
-
-def plot_oil_gas_DSD(profile, oil, mass_flux, z0, d0, substance, gor, num_oil_elements, num_gas_elements):
-    breakup_model = DSD_model(profile, oil, mass_flux, z0,
-                              d0, substance, gor, num_oil_elements, num_gas_elements, SSDI=False)
-    d_gas, vf_gas, d50_gas, d_liq, vf_liq, d50_liq = breakup_model.simulate()
-
-    breakup_model_ssdi = DSD_model(profile, oil, mass_flux, z0,
-                                   d0, substance, gor, num_oil_elements, num_gas_elements, SSDI=True)
-    d_gas_ssdi, vf_gas_ssdi, d50_gas_ssdi, d_liq_ssdi, vf_liq_ssdi, d50_liq_ssdi = breakup_model_ssdi.simulate()
-
-    import matplotlib.pyplot as plt
-
-    fig, ax = plt.subplots(2, 2, figsize=(10, 8))
-
-    # millimeters
-    ax[0, 0].plot([i * 1e3 * 1.15 for i in d_liq], np.cumsum(vf_liq) * 100, label='DWOSM-DSD CDF')
-    ax[0, 0].set_xlabel('Diameter (mm)')
-    ax[0, 0].set_xscale("log")
-    ax[0, 0].set_ylim(0, 100)
-    ax[0, 0].set_xlabel('Diameter (mm)', fontsize=15)
-    ax[0, 0].set_ylabel('Cumulative volume fraction (%)', fontsize=15)
-    ax[0, 0].set_title('Untreated oil droplets', fontsize=15)
-    legend0 = ax[0, 0].legend(loc='upper left', fontsize=12)
-    legend0.set_frame_on(False)
-    legend0.get_frame().set_alpha(0)
-
-    ax[0, 1].plot([i * 1e3 for i in d_gas], np.cumsum(vf_gas) * 100, label='DWOSM-DSD CDF')
-    ax[0, 1].set_xticks([i * 3 for i in range(7)])
-    ax[0, 1].set_xticklabels([str(i * 3) for i in range(7)])
-    ax[0, 1].set_xlim(0.01, 1e2)
-    ax[0, 1].set_xscale("log")
-    ax[0, 1].set_ylim(0, 100)
-    ax[0, 1].set_xlabel('Diameter (mm)', fontsize=15)
-    ax[0, 1].set_ylabel('Cumulative volume fraction (%)', fontsize=15)
-    ax[0, 1].set_title('Untreated gas bubbles', fontsize=15)
-    legend1 = ax[0, 1].legend(loc='upper left', fontsize=12)
-    legend1.set_frame_on(False)
-    legend1.get_frame().set_alpha(0)
-
-    ax[1, 0].plot([i * 1e3 for i in d_liq_ssdi], np.cumsum(vf_liq_ssdi) * 100, label='DWOSM-DSD CDF')
-
-    ax[1, 0].axhline(50, c='red', linestyle='dashed')
-    ax[1, 0].annotate('50', xy=(.055, .277), xycoords='figure fraction', color='r',
-                      horizontalalignment='left', verticalalignment='top', fontsize=12)
-    obs_x = np.arange(2, 3, 0.2)
-    obs_y = np.zeros_like(obs_x)
-    obs_y[:] = 50
-    ax[1, 0].scatter(obs_x, obs_y, marker='$o$', s=80, c='r', alpha=0.4, label='Observed $d_{50}$')
-    ax[1, 0].set_xlim(0.01, 1e2)
-    ax[1, 0].set_xscale("log")
-    ax[1, 0].set_ylim(0, 100)
-    ax[1, 0].set_xlabel('Diameter (mm)', fontsize=15)
-    ax[1, 0].set_ylabel('Cumulative volume fraction (%)', fontsize=15)
-    ax[1, 0].set_title('Treated oil droplets', fontsize=15)
-    # legend2 = ax[1, 0].legend(loc='upper left', fontsize=14)
-    legend2 = ax[1, 0].legend(loc='lower right', fontsize=10)
-
-    legend2.set_frame_on(False)
-    legend2.get_frame().set_alpha(0)
-
-    ax[1, 1].plot([i * 1e3 for i in d_gas_ssdi], np.cumsum(vf_gas_ssdi) * 100, label='DWOSM-DSD CDF')
-    ax[1, 1].axhline(50, c='red', linestyle='dashed')
-    ax[1, 1].set_xscale("log")
-    ax[1, 1].set_ylim(0, 100)
-    ax[1, 1].set_xlabel('Diameter (mm)', fontsize=15)
-    ax[1, 1].set_ylabel('Cumulative volume fraction (%)', fontsize=15)
-    ax[1, 1].set_title('Treated gas bubbles', fontsize=15)
-    legend3 = ax[1, 1].legend(loc='upper left', fontsize=12)
-    legend3.set_frame_on(False)
-    legend3.get_frame().set_alpha(0)
-
-    for i in range(2):  # Loop over rows
-        for j in range(2):  # Loop over columns
-            ax[i, j].tick_params(axis='both', labelsize=11)
-
-
-    notations = ['a', 'b', 'c', 'd']
-    for i, ax in enumerate(ax.flat):
-        ax.text(0.97, 0.97, notations[i], transform=ax.transAxes,
-                fontsize=30, va='top', ha='right')
-
-    plt.tight_layout()
-    plt.show()

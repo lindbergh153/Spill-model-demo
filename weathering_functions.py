@@ -198,7 +198,7 @@ def get_thickness(slick):
     mass = sum(slick.m)
 
     if mass == 0 or slick.A == 0:
-        delta = np.NAN
+        delta = np.nan
     else:
         volume = mass / slick.rho
         delta = volume / slick.A
@@ -291,7 +291,6 @@ def emulsification_rate(slick, p, wind_speed, kemul=1e-6):
         rate = 0
     else:
         rate = kemul * slick.nu0 / slick.nu * wind_speed ** 2 * (slick.Ymax - slick.Y) * p.time_interval
-        print(slick.nu0 / slick.nu, wind_speed, rate)
     return rate
 
 
@@ -376,11 +375,11 @@ def WCC(wind_speed):
     if wind_speed <= 3.7:
         W = 0
     elif 3.7 < wind_speed < 11.25:
-        W = 3.18 * 1e-3 * (wind_speed - 3.7) ** 3
-    elif 9.25 <= wind_speed < 23.09:
-        W = 4.82 * 1e-4 * (wind_speed + 1.98) ** 3
+        W = 3.18e-3 * (wind_speed - 3.7) ** 3
+    elif 11.25 <= wind_speed < 23.09:
+        W = 4.82e-4 * (wind_speed + 1.98) ** 3
     else:
-        W = 4.82 * 1e-4 * (23.1 + 1.98) ** 3
+        W = 4.82e-4 * (23.1 + 1.98) ** 3
     W = W / 100
 
     return W
@@ -455,7 +454,7 @@ def get_P_prime(vf, de, D_prime=107e-6):
 
 def emulsion_vis(slick):
     if sum(slick.m) == 0:
-        mu = np.NAN
+        mu = np.nan
     else:
         mu = slick.mu0 * (1 + 1.15 * slick.Y / (1.187 - 1.15 * slick.Y)) ** 2.49
 
@@ -464,7 +463,7 @@ def emulsion_vis(slick):
 
 def emulsion_den(slick, p):
     if sum(slick.m) == 0:
-        rho = np.NAN
+        rho = np.nan
     else:
         rho = slick.Y * seawater.density(p.T_sur, p.S_sur, p.P_sur) + (1 - slick.Y) * slick.rho0
 
@@ -501,7 +500,7 @@ def get_time_emulsion(mf, vis, rho, wave_height):
         return coeff
 
     def get_emul_time(emulsion_type):
-        if emulsion_type == 0 or 10:
+        if emulsion_type in (0, 10):
             # emulsion type is stable
             a = 27.1
             b = 7520
@@ -518,7 +517,7 @@ def get_time_emulsion(mf, vis, rho, wave_height):
             y = (a + b / (wave_height * 100) ** 1.5) / 60
         elif emulsion_type == 3:
             # emulsion type is unstable
-            y = np.NAN
+            y = np.nan
 
         return y
 

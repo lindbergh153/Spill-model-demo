@@ -9,7 +9,7 @@ transport and surface slick evolution.
 
 from __future__ import annotations
 from scipy import integrate
-from shapely.geometry import Point
+from shore_module import is_onshore
 
 from conversion_functions import convert_loc
 from transport_functions import *
@@ -121,7 +121,7 @@ def calculation_underwater(profile, cloud, p, t0_sub, y0_sub, dt23, dt_sub, D_xy
     # Integrate to the sea surface
     k = 0
     f = 1
-    psteps = 30.
+    psteps = 100.
     stop = False
     while r.successful() and not stop:
 
@@ -399,7 +399,8 @@ def ic_surface(cloud, surfacing_time, p, profile, y_sub):
 
 
 def calculation_surface(profile, slick, p, t0_sur, y0_sur, dt23, dt_sur, Dxyz_sur,
-                        para_current, para_wind, cond='unsteady', shore_polygon=None):
+                        para_current, para_wind, cond='unsteady',
+                        shore_mask=None, raster_info=None):
     """
     Calculate the trajectory and fate of a slick on the water surface
 
@@ -432,6 +433,12 @@ def calculation_surface(profile, slick, p, t0_sur, y0_sur, dt23, dt_sur, Dxyz_su
     :param cond: string, default 'unsteady'
         If cond (condition) is 'unsteady', surface current field is set as unsteady flows;
         otherwise, surface current field is steady field.
+    :param shore_mask: ndarray of uint8 or None, default None
+        Rasterized shoreline boolean array from ``rasterize_shoreline``.
+        1 = land, 0 = water.  If None, stranding check is skipped.
+    :param raster_info: dict or None, default None
+        Raster metadata from ``rasterize_shoreline``, containing
+        bounds (W, E, N, S), resolution, width, and height.
 
     :return t_sur: ndarray
         Times (h) associated with the state space of the slick
@@ -470,7 +477,7 @@ def calculation_surface(profile, slick, p, t0_sur, y0_sur, dt23, dt_sur, Dxyz_su
     psteps = 100.
     stop = False
 
-    if shore_polygon is None:
+    if shore_mask is None:
         while r.successful() and not stop:
             f = sum(slick.m) / sum(slick.m0)
             # Print progress to the screen
@@ -530,8 +537,8 @@ def calculation_surface(profile, slick, p, t0_sur, y0_sur, dt23, dt_sur, Dxyz_su
 
             # Evaluate stop criteria
             if r.successful():
-                # Check if a slick pass through the data boundary
-                if Point(r.y[0], r.y[1]).within(shore_polygon):
+                # Check if a slick is stranded on shoreline (raster lookup)
+                if is_onshore(r.y[0], r.y[1], shore_mask, raster_info):
                     slick.strand = True
                     stop = True
                 elif (r.y[0] <= p.left_bound or r.y[0] >= p.right_bound or
@@ -543,6 +550,7 @@ def calculation_surface(profile, slick, p, t0_sur, y0_sur, dt23, dt_sur, Dxyz_su
                 # Check if simulation exceed the user-defined end time
                 elif t[-1] > dt23:
                     stop = True
+
 
     t_sur = np.array(t)
     y_sur = np.array(y)
@@ -624,8 +632,8 @@ def derivs_surface(t_sur, y_sur, profile, slick, p, para_current, para_wind, dt_
 
     # Set derivatives for dispersion
     # disp = dispersion_rate_GNOME(slick, p, wind_speed)
-    disp = dispersion_rate_Johansen(slick, p, wind_speed)
-    # disp = dispersion_rate_Fingas(slick, p, wind_speed)
+    # disp = dispersion_rate_Johansen(slick, p, wind_speed)
+    disp = dispersion_rate_Fingas(slick, p, wind_speed)
 
     idx = 4
     num_components = len(slick.m)

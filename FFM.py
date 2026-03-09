@@ -1,35 +1,15 @@
-"""
-Far-Field Model (FFM) Main Module
-=================================
-
-Ensemble simulation framework for far-field oil transport using
-multiprocessing parallelization.
-
-Classes
--------
-Far_Field : Main simulation controller with parallel execution
-
-"""
-
-from __future__ import annotations
 import copy
-import csv
 import multiprocessing
 from multiprocessing import Pool
-
 import matplotlib.pyplot as plt
-import matplotlib
-import geopandas as gpd
-from netCDF4 import Dataset
-from matplotlib_scalebar.scalebar import ScaleBar
-
 from SPM import Model_parcel
 from SPM_utilities import *
 from ambient_profile import Profile3d
 from conversion_functions import convert_loc, get_delta_t02
 from gridmesh import plot_cuboid
-from shore_module import get_shore_polygon, Point
-import pandas as pd
+from netCDF4 import Dataset
+from shore_module import get_shore_polygon
+import csv
 from FFM_utilities import (separate_oil_gas, get_exit_time, get_release_time,
                            assemble_clouds, initial_cloud_mass, duplicate_gas_results)
 
@@ -158,7 +138,8 @@ class FFM_API(object):
 
     def SPM_API(self, cloud, profiles, initial_location, Dxy_sub, Dz_sub, Dxy_sur,
                 particle_release_time, dt_end_time, para_current, para_wind,
-                dt_sub, dt_sur, dt02_current, dt02_wind, shore_polygon=None):
+                dt_sub, dt_sur, dt02_current, dt02_wind,
+                shore_mask=None, raster_info=None):
         """
         An API to run an SPM simulation (aims to a single cloud/slick)
 
@@ -192,6 +173,10 @@ class FFM_API(object):
             Time step of far-field model for underwater oil (hours)
         :param dt_sur: float
             Time step of far-field model for surfaced oil (hours)
+        :param shore_mask: ndarray or None
+            Rasterized shoreline boolean array (1=land, 0=water)
+        :param raster_info: dict or None
+            Raster metadata (bounds, resolution, etc.)
 
         :return FF_result: list
             A list contains the output of SPM
@@ -209,7 +194,8 @@ class FFM_API(object):
 
         # run the simulation of SPM
         FF_result = SPM.simulate(particle_release_time, dt_end_time, Dxyz_sur, Dxyz_sub,
-                                 dt_sub, dt_sur, para_current, para_wind, shore_polygon)
+                                 dt_sub, dt_sur, para_current, para_wind,
+                                 shore_mask, raster_info)
 
         return FF_result
 
@@ -271,172 +257,6 @@ class FFM_API(object):
 
         plt.show()
 
-    def plot_xy_2d_fc(self):
-        """
-        Plot a 2D figure for far-field modeling
-
-        """
-        # Initialize the containers of clouds and slicks' location
-        x_sur, y_sur, A = [], [], []
-        lat, lon, z0 = self.initial_location
-
-        # Extract the results from the outputs of FFM
-        for i in self.FF_results:
-            if len(i) == 3:
-                if sum(i[2].m) > 1e-4:
-                    x_sur.append(i[2].x)
-                    y_sur.append(i[2].y)
-                    A.append(i[2].A)
-
-        fig, ax = plt.subplots(figsize=(6, 6))
-
-        ax.set_title('{0} (CDT time)'.format(self.end_time), fontsize=15)
-
-        mergedPolys = get_shore_polygon('data/coast_GOM_full.bna')
-        gpd.GeoSeries(mergedPolys).plot(ax=ax)
-
-        ax.scatter(x_sur, y_sur, s=0.2, color='r', alpha=0.7)
-        ax.scatter(lon, lat, color='black', s=80, marker="X")
-
-        gdf = gpd.read_file(self.spill_image)
-        target_crs = 'EPSG:4326'
-        gdf = gdf.to_crs(target_crs)
-        for j in gdf.axes[1]:
-            cap_j = j.upper()
-            if cap_j == 'FORECAST':
-                column_name = j
-        category_mapping = {
-            'FORECASTHEAVY': 'Heavy',
-            'FORECASTMEDIUM': 'Medium',
-            'FORECASTLIGHT': 'Light',
-            'FORECASTUNCERTAINTY': 'Uncertainty'
-        }
-        gdf[column_name] = gdf[column_name].replace(category_mapping)
-
-        gdf.plot(column=column_name, ax=ax, categorical=True, alpha=0.5, cmap=matplotlib.colormaps['viridis'],
-                 legend=True, legend_kwds={"loc": "lower left", 'fontsize': 12})
-
-        points = gpd.GeoSeries([Point(-86, 27), Point(-85, 27)], crs=4326)
-        points = points.to_crs(32619)
-        distance_meters = points[0].distance(points[1])
-        ax.add_artist(ScaleBar(distance_meters, location="lower right", box_color="grey"))
-
-        ax.set_xlim(-91, -85)
-        ax.set_ylim(27, 30.5)
-        ax.set_xlabel('Lon', fontsize=14)
-        ax.set_ylabel('Lat', fontsize=14)
-        ax.set_title('{0} (CDT time)'.format(self.end_time), fontsize=16)
-
-        plt.tight_layout()
-        # plt.show()
-        # time_name = ''.join(char for char in str(self.end_time) if char.isdigit())
-        time_name = ''.join(char for char in str(self.end_time) if char.isdigit())[4:-4]
-        Dxy_sur = "{:.1e}".format(self.Dxy_sur)
-        plt.savefig('trajectory0921/fc/{0}cur{1}wind{2}D{3}.jpg'.
-                    format(time_name, self.para_current, self.para_wind, Dxy_sur), dpi=900)
-
-        df = pd.DataFrame({"lon": x_sur, "lat": y_sur, 'area': A})
-        df.to_csv('trajectory0921/fc/{0}cur{1}wind{2}D{3}.csv'.
-                    format(time_name, self.para_current, self.para_wind, Dxy_sur), index=False)
-
-    def plot_xy_2d_fp(self):
-        """
-        Plot a 2D figure for far-field modeling
-
-        """
-        # Initialize the containers of clouds and slicks' location
-        x_sur, y_sur, A = [], [], []
-        lat, lon, z0 = self.initial_location
-
-        # Extract the results from the outputs of FFM
-        for i in self.FF_results:
-            if len(i) == 3:
-                if sum(i[2].m) > 0:
-                    x_sur.append(i[2].x)
-                    y_sur.append(i[2].y)
-                    A.append(i[2].A)
-
-        fig, ax = plt.subplots(figsize=(6, 6))
-
-        ax.set_title('{0} (CDT time)'.format(self.end_time), fontsize=15)
-
-        mergedPolys = get_shore_polygon('data/coast_GOM_full.bna')
-        gpd.GeoSeries(mergedPolys).plot(ax=ax)
-
-        ax.scatter(x_sur, y_sur, s=0.5, color='r', alpha=0.8)
-        ax.scatter(lon, lat, color='black', s=80, marker="X")
-
-        gdf = gpd.read_file(self.spill_image)
-        gdf.plot(ax=ax, color='black', alpha=0.5)
-
-        points = gpd.GeoSeries([Point(-86, 27), Point(-85, 27)], crs=4326)
-        points = points.to_crs(32619)
-        distance_meters = points[0].distance(points[1])
-        ax.add_artist(ScaleBar(distance_meters, location="lower right", box_color="grey"))
-
-        ax.set_xlim(-91, -85)
-        ax.set_ylim(27, 30.5)
-
-        plt.tight_layout()
-        plt.show()
-        # time_name = ''.join(char for char in str(self.end_time) if char.isdigit())[4:-4]
-        # Dxy_sur = "{:.1e}".format(self.Dxy_sur)
-        # plt.savefig('trajectory0925/fp/{0}cur{1}wind{2}D{3}.jpg'.
-        #             format(time_name, self.para_current, self.para_wind, Dxy_sur), dpi=900)
-
-        # df = pd.DataFrame({"lon": x_sur, "lat": y_sur, 'area': A})
-        # df.to_csv('trajectory0925/fp/{0}cur{1}wind{2}D{3}.csv'.
-        #             format(time_name, self.para_current, self.para_wind, Dxy_sur), index=False)
-
-    def plot_xy_2d_shore(self):
-        """
-        Plot a 2D figure for far-field modeling
-
-        """
-        # Initialize the containers of clouds and slicks' location
-        x_sur, y_sur, A = [], [], []
-        lat, lon, z0 = self.initial_location
-
-        # Extract the results from the outputs of FFM
-        for i in self.FF_results:
-            if len(i) == 3:
-                if sum(i[2].m) > 0 and i[2].strand:
-                    x_sur.append(i[2].x)
-                    y_sur.append(i[2].y)
-                    A.append(i[2].A)
-
-        fig, ax = plt.subplots(figsize=(6, 6))
-
-        ax.set_title('{0} (CDT time)'.format(self.end_time), fontsize=15)
-
-        mergedPolys = get_shore_polygon('data/coast_GOM_full.bna')
-        gpd.GeoSeries(mergedPolys).plot(ax=ax)
-
-        ax.scatter(x_sur, y_sur, s=0.5, color='r', alpha=0.8)
-        ax.scatter(lon, lat, color='black', s=80, marker="X")
-
-        gdf = gpd.read_file(self.spill_image)
-        gdf.plot(ax=ax, color='black', alpha=0.5)
-
-        points = gpd.GeoSeries([Point(-86, 27), Point(-85, 27)], crs=4326)
-        points = points.to_crs(32619)
-        distance_meters = points[0].distance(points[1])
-        ax.add_artist(ScaleBar(distance_meters, location="lower right", box_color="grey"))
-
-        ax.set_xlim(-91, -85)
-        ax.set_ylim(27, 30.5)
-
-        plt.tight_layout()
-        # plt.show()
-        time_name = ''.join(char for char in str(self.end_time) if char.isdigit())[4:-4]
-        Dxy_sur = "{:.1e}".format(self.Dxy_sur)
-        plt.savefig('trajectory/trajectory1005/{0}cur{1}wind{2}D{3}.jpg'.
-                    format(time_name, self.para_current, self.para_wind, Dxy_sur), dpi=900)
-
-        df = pd.DataFrame({"lon": x_sur, "lat": y_sur, 'area': A})
-        df.to_csv('trajectory/trajectory1005/{0}cur{1}wind{2}D{3}.csv'.
-                    format(time_name, self.para_current, self.para_wind, Dxy_sur), index=False)
-
     def plot_3d(self, show_mesh=False):
         """
         Plot a 3D figure for far-field modeling
@@ -493,12 +313,6 @@ class FFM_API(object):
             bound = [lon_min, lon_max, lat_min, lat_max, depth_min, depth_max]
             plot_cuboid(ax, bound, bin_size=20, line_width=0.5)
 
-        # ax.xaxis.set_tick_params(color='white')
-        # ax.yaxis.set_tick_params(color='white')
-        # ax.zaxis.set_tick_params(color='white')
-        # ax.xaxis.set_ticklabels([])
-        # ax.yaxis.set_ticklabels([])
-        # ax.zaxis.set_ticklabels([])
         ax.tick_params(axis='both', which='major', labelsize=18)
         ax.tick_params(axis='both', which='minor', labelsize=18)
         elev = 35
@@ -646,7 +460,45 @@ class FFM_API(object):
 
         return file_name
 
+    def store_oil_trajectory_xlsx(self, file_name=None):
+        from conversion_functions import remove_non_numeric
+        import xlsxwriter
 
+        if file_name is None:
+            end_time = remove_non_numeric(str(self.end_time))
+            file_name = 'slick_trajectory_{0}.xlsx'.format(end_time)
+
+        workbook = xlsxwriter.Workbook(file_name+'.xlsx')
+        worksheet = workbook.add_worksheet()
+
+        row = 0
+
+        for drop in self.particles:
+
+            for i in range(len(drop.x)):
+                worksheet.write(row, i, drop.x[i])
+            row += 1
+            for j in range(len(drop.y)):
+                worksheet.write(row, j, drop.y[j])
+            row += 1
+            for z in range(len(drop.z)):
+                worksheet.write(row, z, drop.z[z])
+            row += 1
+            for t in range(len(drop.time)):
+                worksheet.write(row, t, drop.time[t])
+            row += 1
+            # for s in range(len(drop.m)):
+            #     worksheet.write(row, s, drop.m[s])
+            # row += 1
+            for sur in range(len(drop.surface_mass)):
+                worksheet.write(row, sur, drop.surface_mass[sur])
+            row += 1
+            for sub in range(len(drop.subsurface_mass)):
+                worksheet.write(row, sub, drop.subsurface_mass[sub])
+            row += 1
+
+        workbook.use_zip64()
+        workbook.close()
 
 def assemble_oil_inputs(near_data, current_data, wind_data, oil_droplets, initial_location, Dxy_sub, Dz_sub, Dxy_sur,
                     start_time, release_duration, end_time, release_interval,
@@ -703,10 +555,10 @@ def assemble_oil_inputs(near_data, current_data, wind_data, oil_droplets, initia
     # get the hour number between baseline time and start time
     dt_end_time = (end_time - start_time).total_seconds() / 3600
 
-    # Instantiate a 3d profile
+    # Instantiate a 3d profile 
     profile = Profile3d(near_data, current_data, wind_data)
 
-    # Get all the fixed information required by SPM
+    # Get all the fixed information required by SPM 
     all_profiles = profile.return_all()
 
     # Obtain the exiting time of each particle in hours
@@ -722,6 +574,20 @@ def assemble_oil_inputs(near_data, current_data, wind_data, oil_droplets, initia
     if shore_data is not None:
         shore_polygon = get_shore_polygon(shore_data)
 
+        # Rasterize the shoreline ONCE here (shared by all workers)
+        # all_profiles indices: [8]=min_lat_current, [9]=max_lat_current,
+        #   [10]=min_lon_current, [11]=max_lon_current,
+        #   [14]=min_lat_wind, [15]=max_lat_wind,
+        #   [16]=min_lon_wind, [17]=max_lon_wind
+        from shore_module import rasterize_shoreline
+        W = max(all_profiles[10], all_profiles[16])
+        E = min(all_profiles[11], all_profiles[17])
+        N = min(all_profiles[9], all_profiles[15])
+        S = max(all_profiles[8], all_profiles[14])
+        bounds = (W, E, N, S)
+        shore_mask, raster_info = rasterize_shoreline(shore_polygon, bounds,
+                                                       resolution=0.005)
+
         # create a container
         all_inputs = []
 
@@ -731,7 +597,7 @@ def assemble_oil_inputs(near_data, current_data, wind_data, oil_droplets, initia
             inputs = []
             inputs.extend((cloud, all_profiles, initial_location, Dxy_sub, Dz_sub, Dxy_sur,
                            particle_release_time[count], dt_end_time, para_current, para_wind,
-                           dt_sub, dt_sur, dt02_current, dt02_wind, shore_polygon))
+                           dt_sub, dt_sur, dt02_current, dt02_wind, shore_mask, raster_info))
             all_inputs.append(inputs)
             count += 1
     else:

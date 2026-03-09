@@ -306,4 +306,3 @@ def plot_cuboid(ax, bound, bin_size=20, line_width=0.5):
     ax.plot_wireframe(x32, y3, z3, color='b', rstride=1, cstride=1, alpha=0.6, linewidth=line_width)
 
     plt.show()
-

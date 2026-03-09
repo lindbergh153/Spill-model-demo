@@ -11,9 +11,12 @@ DWOSM : Main model interface integrating NFM and FFM
 """
 
 from __future__ import annotations
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module='pkg_resources')
 from FFM import FFM_API
 from NFM import Blowout
 import numpy as np
+
 
 
 class DWOSM(object):
@@ -192,32 +195,33 @@ class DWOSM(object):
             raise Exception('Wrong inputs related to location')
         elif not isinstance(self.oil, str):
             raise Exception('Wrong inputs related to oil')
-        elif not isinstance(self.q_oil, float) and not isinstance(self.q_oil, int) or self.q_oil < 0:
+        elif (not isinstance(self.q_oil, (float, int))) or self.q_oil < 0:
             raise Exception('Wrong inputs related to q_oil')
         elif not isinstance(self.d_pipe, float):
             raise Exception('Wrong inputs related to d_pipe')
         elif not isinstance(self.release_interval, float):
             raise Exception('Wrong inputs related to release_interval')
-        elif not isinstance(self.dt_near, float) and not isinstance(self.dt_near, int) \
-                and not isinstance(self.dt_sub, float) and not isinstance(self.dt_sub, int) \
-                and not isinstance(self.dt_sur, float) and not isinstance(self.dt_sur, int) \
-                or self.dt_near < 0 or self.dt_sub < 0 or self.dt_sur < 0:
+        elif (not isinstance(self.dt_near, (float, int))
+              or not isinstance(self.dt_sub, (float, int))
+              or not isinstance(self.dt_sur, (float, int))
+              or self.dt_near < 0 or self.dt_sub < 0 or self.dt_sur < 0):
             raise Exception('Wrong inputs related to dt_near/dt_sub/dt_sur')
-        elif not isinstance(self.phi_0, float) or not isinstance(self.theta_0, int):
+        elif not isinstance(self.phi_0, float) or not isinstance(self.theta_0, (float, int)):
             raise Exception('Wrong inputs related to phi_0/theta_0')
-        elif not isinstance(self.gor, float) and not isinstance(self.gor, int) or gor < 0:
+        elif not isinstance(self.gor, (float, int)) or self.gor < 0:
             raise Exception('Wrong inputs related to gor')
-        elif not isinstance(self.num_gas_elements, int) or not isinstance(self.num_oil_elements, int) \
-                or self.num_gas_elements < 0 or self.num_oil_elements < 0:
+        elif (not isinstance(self.num_gas_elements, int) or not isinstance(self.num_oil_elements, int)
+              or self.num_gas_elements < 0 or self.num_oil_elements < 0):
             raise Exception('Wrong inputs related to num_gas_elements/num_oil_elements')
-        elif not isinstance(self.Dxy_sub, int) and not isinstance(self.Dxy_sub, float) \
-                and not isinstance(self.Dz_sub, int) and not isinstance(self.Dz_sub, float) \
-                and not isinstance(self.Dxy_sur, int) and not isinstance(self.Dxy_sur, float) \
-                or self.Dxy_sub < 0 or self.Dz_sub < 0 or self.Dxy_sur < 0:
+        elif (not isinstance(self.Dxy_sub, (int, float))
+              or not isinstance(self.Dz_sub, (int, float))
+              or not isinstance(self.Dxy_sur, (int, float))
+              or self.Dxy_sub < 0 or self.Dz_sub < 0 or self.Dxy_sur < 0):
             raise Exception('Wrong inputs related to Dxy_sub/Dz_sub/Dxy_sur')
-        elif not isinstance(self.para_current, int) and not isinstance(self.para_current, float) \
-                or self.para_current > 1.5 or self.para_current < 0.5 \
-                and not isinstance(self.para_wind, float) or self.para_wind > 0.1 or self.para_current < 0:
+        elif (not isinstance(self.para_current, (int, float))
+              or not isinstance(self.para_wind, (int, float))
+              or not (0.5 <= self.para_current <= 1.5)
+              or not (0 <= self.para_wind <= 0.1)):
             raise Exception('Wrong inputs related to para_current/para_wind')
         elif not isinstance(self.far_field, bool) or not isinstance(self.exit_only, bool):
             raise Exception('Wrong inputs related to far_field/exit_only')
@@ -245,10 +249,10 @@ if __name__ == "__main__":
     Dxy_sub, Dxy_sur = 1e3, 2e6  # 1.5e6
     SSDI = True
 
-    near_data = 'data/nearfield2010.csv'
-    current_data = 'data/current2010_422_512.nc4'
-    wind_data = 'data/wind2010.nc'
-    shore_data = 'data/shore_GOM/coast_int.bna'
+    near_data = 'nearfield2010.csv'
+    current_data = 'current2010_422_512.nc4'
+    wind_data = 'wind2010.nc'
+    shore_data = 'coast_GOM_full.bna'
 
     nearshore_CDT = get_t2(2010, 4, 28, 16)  # 28-APR-10 1600 CDT
 

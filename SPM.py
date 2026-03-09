@@ -67,7 +67,7 @@ class Model_parcel(object):
         self.X0 = X0
 
     def simulate(self, start_time_FF, dt23, Dxyz_sur, Dxyz_sub, dt_sub, dt_sur,
-                 para_current, para_wind, shore_polygon):
+                 para_current, para_wind, shore_mask=None, raster_info=None):
         """
         Simulate the trajectory and fate of a particle cloud from given initial conditions
 
@@ -88,6 +88,10 @@ class Model_parcel(object):
             current drift coefficient
         :param para_wind: float, default=0.03
             wind drift coefficient
+        :param shore_mask: ndarray or None
+            Rasterized shoreline boolean array (1=land, 0=water)
+        :param raster_info: dict or None
+            Raster metadata (bounds, resolution, etc.)
 
         :return FF_result: list
             A list contains the output of SPM
@@ -126,7 +130,8 @@ class Model_parcel(object):
             self.t_sur, self.y_sur, self.slick = calculation_surface(self.profile, slick, self.p, t0_sur, y0_sur,
                                                                      dt23, dt_sur,
                                                                      Dxyz_sur, para_current, para_wind,
-                                                                     shore_polygon=shore_polygon)
+                                                                     shore_mask=shore_mask,
+                                                                     raster_info=raster_info)
 
             # Process the records of Slick and get the record of the
             # evaporated and dispersed mass along with time

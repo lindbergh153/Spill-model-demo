@@ -884,4 +884,3 @@ def get_dict_k_bio():
                   }
 
     return dict_k_bio
-

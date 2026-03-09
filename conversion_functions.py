@@ -165,6 +165,8 @@ def get_delta_t02(data: Dataset or str, start_time: datetime, timezone: str):
         t2 = start_time
     elif str.upper(timezone) == "CDT":
         t2 = CDTtoUTC(start_time)
+    else:
+        raise ValueError(f"Unsupported timezone: {timezone}. Use 'GMT' or 'CDT'.")
 
     t_delta02 = (t2 - t0).total_seconds() / 3600
 
@@ -178,6 +180,8 @@ def get_delta_t03(data: Dataset, end_time: datetime, timezone: str):
         t3 = end_time
     elif str.upper(timezone) == "CDT":
         t3 = CDTtoUTC(end_time)
+    else:
+        raise ValueError(f"Unsupported timezone: {timezone}. Use 'GMT' or 'CDT'.")
 
     t_delta03 = (t3 - t0).total_seconds() / 3600
 

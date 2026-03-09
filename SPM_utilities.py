@@ -377,7 +377,7 @@ def get_location(x, y, z, mass):
         Oil location
     """
     if sum(mass) == 0:
-        x, y, z = np.NAN, np.NAN, np.NAN
+        x, y, z = np.nan, np.nan, np.nan
 
     return x, y, z
 
@@ -395,7 +395,7 @@ def get_slick_area(A, mass):
 
     """
     if sum(mass) == 0:
-        A = np.NAN
+        A = np.nan
 
     return A
 
@@ -430,14 +430,14 @@ def get_water_content(Y, mass):
 
     """
     if sum(mass) == 0:
-        Y = np.NAN
+        Y = np.nan
 
     return Y
 
 
 def get_nu(mu, rho, mass):
     if sum(mass) == 0:
-        nu = np.NAN
+        nu = np.nan
     else:
         nu = mu / rho
 
@@ -446,7 +446,7 @@ def get_nu(mu, rho, mass):
 
 def get_sigma(particle, mass, p):
     if sum(mass) == 0:
-        sigma = np.NAN
+        sigma = np.nan
     else:
         sigma = particle.FluidParticle.interface_tension(mass, p.T_sur, p.S_sur, p.P_sur)
 

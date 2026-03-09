@@ -164,7 +164,7 @@ def current_velocity(u_water, v_water, y, t):
         if depth < 0: depth = 0
         u, v = u_water([t, depth, lat, lon])[0], v_water([t, depth, lat, lon])[0]
     except ValueError:
-        print(t, depth, lat, lon)
+        print(t, depth, lat, lon, 'current_velocity')
         raise Exception('current_velocity in transport_functions is wrong')
 
     return u, v
@@ -195,7 +195,7 @@ def wind_velocity(u_wind, v_wind, y, t):
     try:
         u, v = u_wind([t, lat, lon])[0], v_wind([t, lat, lon])[0]
     except ValueError:
-        print(t, lat, lon)
+        print(t, lat, lon, 'wind_velocity')
         raise Exception('wind_velocity in transport_functions is wrong')
 
     return u, v

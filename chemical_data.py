@@ -15,7 +15,7 @@ import pandas as pd
 
 def tamoc_data():
     """Load TAMOC chemical property database."""
-    data_path = Path(__file__).parent / 'data' / 'ChemData.csv'
+    data_path = Path(__file__).parent /'ChemData.csv'
     data_chem = pd.read_csv(data_path, skiprows=[2])
 
     composition = data_chem.iloc[:, 0][1:].tolist()
@@ -100,4 +100,3 @@ def tamoc_data():
                 units[variable] = '(kg/m^3)'
 
     return data, units
-

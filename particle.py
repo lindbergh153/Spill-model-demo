@@ -361,13 +361,18 @@ class FluidMixture(object):
         rho_p = FluidMixture.density(self, m, T, P)
 
         # Get the density difference in g/cm^3
-        delta_rho = (rho_w - rho_p) / 1000.
+        delta_rho_raw = (rho_w - rho_p) / 1000.
+
+        # Guard against negative delta_rho (fluid denser than water) which
+        # causes RuntimeWarning with fractional powers.  Clamp to a small
+        # positive value so the Danesh (1998) correlation remains valid.
+        delta_rho = np.maximum(delta_rho_raw, 1e-10)
 
         # Compute the pseudo critical temperature using mole fractions as weights
         xi = self.mol_frac(m)
         Tc = np.sum(self.Tc * xi)
-        # print(rho_w, rho_p, T, Tc)
-        # Get the interfacial tension
+
+        # Get the interfacial tension (Danesh 1998)
         sigma = 0.111 * delta_rho ** 1.024 * (T / Tc) ** -1.25
 
         # Adjust the interfacial tension to a measured value
@@ -1032,4 +1037,3 @@ def method_MM(m, T, P, M, Pc, Tc, omega, delta):
 
     # Return the optimized mixture composition
     return xi, beta, K
-
